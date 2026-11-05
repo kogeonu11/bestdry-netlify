@@ -372,17 +372,17 @@ export default function Admin() {
               공지사항
             </button>
             <button
-              onClick={() => setTab("고객 문의")}
-              className={tab === "고객 문의" ? "selected" : ""}
+              onClick={() => setTab("문의 게시판")}
+              className={tab === "문의 게시판" ? "selected" : ""}
             >
-              고객 문의
+              문의 게시판
             </button>
           </nav>
-          {tab === "고객 문의" && <AdminInquiries />}
+          {tab === "문의 게시판" && <AdminInquiries />}
           <div
             className="admin-fields"
             style={{
-              display: ["공지사항", "고객 문의"].includes(tab)
+              display: ["공지사항", "문의 게시판"].includes(tab)
                 ? "none"
                 : undefined,
             }}
@@ -453,7 +453,7 @@ export default function Admin() {
               }
             />
           )}
-          <div className="admin-save-bar" hidden={tab === "고객 문의"}>
+          <div className="admin-save-bar" hidden={tab === "문의 게시판"}>
             <span aria-live="polite">{message}</span>
             <button
               className="primary-button"

@@ -189,11 +189,15 @@ export default async (req: Request) => {
   const origin = req.headers.get("origin");
   if (origin && origin !== url.origin)
     return json({ error: "요청 출처를 확인해 주세요." }, 403);
-  if (req.method === "POST") {
-    if (url.pathname === "/api/inquiries")
-      return handleInquiry(req, "create", json);
-    if (url.pathname === "/api/inquiries/lookup")
-      return handleInquiry(req, "lookup", json);
+  if (url.pathname === "/api/inquiries") {
+    if (req.method === "GET")
+      return handleInquiry(
+        req,
+        url.searchParams.has("id") ? "detail" : "list",
+        json,
+      );
+    if (req.method === "POST") return handleInquiry(req, "create", json);
+    if (req.method === "DELETE") return handleInquiry(req, "remove", json);
   }
   if (!url.pathname.startsWith("/api/admin/"))
     return json({ error: "Not found" }, 404);
@@ -334,9 +338,12 @@ export default async (req: Request) => {
       req,
       url.searchParams.has("id") ? "detail" : "list",
       json,
+      { admin: true },
     );
   if (url.pathname === "/api/admin/inquiries" && req.method === "PUT")
-    return handleInquiry(req, "reply", json);
+    return handleInquiry(req, "reply", json, { admin: true });
+  if (url.pathname === "/api/admin/inquiries" && req.method === "DELETE")
+    return handleInquiry(req, "adminRemove", json, { admin: true });
   if (url.pathname === "/api/admin/session" && req.method === "GET")
     return json({ ok: true });
   if (url.pathname === "/api/admin/content" && req.method === "GET")
@@ -399,7 +406,6 @@ export const config = {
     "/api/site-content",
     "/api/notice-image/:id",
     "/api/inquiries",
-    "/api/inquiries/lookup",
     "/api/admin/*",
   ],
   preferStatic: false,
