@@ -78,6 +78,9 @@ function showValue(v: unknown) {
 export default function Admin() {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
+  const [resetMode, setResetMode] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [content, setContent] = useState<SiteContent>(defaultContent);
   const [tab, setTab] = useState(groups[0][0]);
   const [busy, setBusy] = useState(false);
@@ -87,10 +90,10 @@ export default function Admin() {
   >({});
   useEffect(() => {
     adminApi("session")
-      .then(r => {
+      .then((r) => {
         if (r.ok) {
           setAuthenticated(true);
-          return adminApi("content").then(async x => {
+          return adminApi("content").then(async (x) => {
             if (x.ok) setContent(await x.json());
           });
         }
@@ -99,21 +102,52 @@ export default function Admin() {
   }, []);
   async function login(e: React.FormEvent) {
     e.preventDefault();
+    if (resetMode && password !== confirmPassword) {
+      setMessage("새 비밀번호가 서로 일치하지 않습니다.");
+      return;
+    }
     setBusy(true);
     setMessage("");
     try {
-      const r = await adminApi("login", {
+      const r = await adminApi(resetMode ? "reset-password" : "login", {
         method: "POST",
-        body: JSON.stringify({ password }),
+        body: JSON.stringify(
+          resetMode ? { password, code: recoveryCode } : { password },
+        ),
       });
       const d = await r.json();
-      if (!r.ok) throw Error(d.error || "로그인할 수 없습니다.");
-      setAuthenticated(true);
+      if (!r.ok) throw Error(d.error || "요청을 처리할 수 없습니다.");
       setPassword("");
+      if (resetMode) {
+        setResetMode(false);
+        setRecoveryCode("");
+        setConfirmPassword("");
+        setMessage("비밀번호가 변경되었습니다. 새 비밀번호로 로그인하세요.");
+        return;
+      }
+      setAuthenticated(true);
       const c = await adminApi("content");
       if (c.ok) setContent(await c.json());
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "로그인에 실패했습니다.");
+      setMessage(e instanceof Error ? e.message : "요청을 처리할 수 없습니다.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function requestResetEmail() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const r = await adminApi("request-reset", { method: "POST" });
+      const data = await r.json();
+      if (!r.ok) throw Error(data.error);
+      setMessage(
+        "등록된 관리자 이메일로 인증 코드를 보냈습니다. 15분 안에 입력하세요.",
+      );
+    } catch (e) {
+      setMessage(
+        e instanceof Error ? e.message : "이메일 발송에 실패했습니다.",
+      );
     } finally {
       setBusy(false);
     }
@@ -121,7 +155,7 @@ export default function Admin() {
   async function save() {
     if (Object.keys(jsonErrors).length) {
       setMessage(
-        "JSON 입력에 오류가 있습니다. 빨간 안내가 표시된 내용을 먼저 수정해 주세요."
+        "JSON 입력에 오류가 있습니다. 빨간 안내가 표시된 내용을 먼저 수정해 주세요.",
       );
       return;
     }
@@ -150,20 +184,20 @@ export default function Admin() {
     if (!textKeys.has(key)) {
       try {
         const value = JSON.parse(raw);
-        setJsonErrors(old => {
+        setJsonErrors((old) => {
           const next = { ...old };
           delete next[key];
           return next;
         });
-        setContent(prev => ({ ...prev, [key]: value }));
+        setContent((prev) => ({ ...prev, [key]: value }));
       } catch {
-        setJsonErrors(old => ({
+        setJsonErrors((old) => ({
           ...old,
           [key]: "JSON 문법을 확인해 주세요. 이 입력은 저장되지 않습니다.",
         }));
       }
     } else {
-      setContent(prev => ({ ...prev, [key]: raw }));
+      setContent((prev) => ({ ...prev, [key]: raw }));
     }
   }
   const labels: Partial<Record<keyof SiteContent, string>> = {
@@ -209,23 +243,88 @@ export default function Admin() {
             <LockKeyhole />
           </span>
           <p className="eyebrow">BEST DRY · PRIVATE ACCESS</p>
-          <h1>관리자 로그인</h1>
-          <p>브랜드와 매장 안내 정보를 안전하게 관리합니다.</p>
+          <h1>{resetMode ? "관리자 비밀번호 재설정" : "관리자 로그인"}</h1>
+          {resetMode ? (
+            <>
+              <p>
+                등록된 관리자 이메일로 받은 인증 코드로 새 비밀번호를
+                설정하세요.
+              </p>
+              <button
+                type="button"
+                className="underlined-link"
+                disabled={busy}
+                onClick={requestResetEmail}
+              >
+                인증 코드 이메일로 받기
+              </button>
+              <label className="field-label" htmlFor="admin-recovery-code">
+                이메일 인증 코드 또는 관리자 복구 코드
+              </label>
+              <input
+                id="admin-recovery-code"
+                type="password"
+                autoComplete="one-time-code"
+                value={recoveryCode}
+                onChange={(e) => setRecoveryCode(e.target.value)}
+                required
+                maxLength={512}
+              />
+            </>
+          ) : (
+            <p>브랜드와 매장 안내 정보를 안전하게 관리합니다.</p>
+          )}
           <label className="field-label" htmlFor="admin-password">
-            관리자 비밀번호
+            {resetMode ? "새 비밀번호 (16자 이상)" : "관리자 비밀번호"}
           </label>
           <input
-            autoComplete="current-password"
+            autoComplete={resetMode ? "new-password" : "current-password"}
             type="password"
             id="admin-password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             required
+            minLength={resetMode ? 16 : undefined}
             maxLength={512}
             placeholder="비밀번호 입력"
           />
+          {resetMode && (
+            <>
+              <label className="field-label" htmlFor="admin-confirm-password">
+                새 비밀번호 확인
+              </label>
+              <input
+                id="admin-confirm-password"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={16}
+                maxLength={512}
+              />
+            </>
+          )}
           <button disabled={busy} className="primary-button login-button">
-            {busy ? "확인 중…" : "안전하게 로그인"}
+            {busy
+              ? "확인 중…"
+              : resetMode
+                ? "비밀번호 재설정"
+                : "안전하게 로그인"}
+          </button>
+          <button
+            type="button"
+            className="underlined-link"
+            disabled={busy}
+            onClick={() => {
+              setResetMode(!resetMode);
+              setPassword("");
+              setRecoveryCode("");
+              setConfirmPassword("");
+              setMessage("");
+            }}
+          >
+            {resetMode ? "로그인으로 돌아가기" : "비밀번호 찾기 (이메일)"}
           </button>
           {message && (
             <p className="form-alert" role="alert">
@@ -233,8 +332,7 @@ export default function Admin() {
             </p>
           )}
           <p className="security-caption">
-            <ShieldCheck size={15} /> Netlify 환경변수로 보호되는 관리자
-            화면입니다.
+            <ShieldCheck size={15} /> 관리자 전용 화면입니다.
           </p>
         </form>
       ) : (
@@ -279,7 +377,7 @@ export default function Admin() {
           >
             {groups
               .find(([title]) => title === tab)?.[1]
-              .map(key => {
+              .map((key) => {
                 const isText = textKeys.has(key);
                 const value = showValue(content[key]);
                 const complex = !isText;
@@ -297,7 +395,7 @@ export default function Admin() {
                           }
                           spellCheck="false"
                           value={value}
-                          onChange={e => update(key, e.target.value)}
+                          onChange={(e) => update(key, e.target.value)}
                           aria-label={labels[key]}
                         />
                         {jsonErrors[key] && (
@@ -317,12 +415,12 @@ export default function Admin() {
                       <textarea
                         rows={key === "about" ? 5 : 3}
                         value={value}
-                        onChange={e => update(key, e.target.value)}
+                        onChange={(e) => update(key, e.target.value)}
                       />
                     ) : (
                       <input
                         value={value}
-                        onChange={e => update(key, e.target.value)}
+                        onChange={(e) => update(key, e.target.value)}
                         maxLength={key === "seoTitle" ? 100 : 500}
                         placeholder={
                           key === "kakaoUrl"
@@ -338,8 +436,8 @@ export default function Admin() {
           {tab === "공지사항" && (
             <NoticeEditor
               posts={content.noticePosts}
-              onChange={noticePosts =>
-                setContent(prev => ({ ...prev, noticePosts }))
+              onChange={(noticePosts) =>
+                setContent((prev) => ({ ...prev, noticePosts }))
               }
             />
           )}

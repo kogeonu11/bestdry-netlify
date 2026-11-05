@@ -4,11 +4,11 @@ import type { NoticePost, SiteContent } from "@shared/content";
 
 export function publicNotices(posts: NoticePost[]) {
   return [...posts]
-    .filter(post => post.published)
+    .filter((post) => post.published)
     .sort(
       (a, b) =>
         Number(b.pinned) - Number(a.pinned) ||
-        b.createdAt.localeCompare(a.createdAt)
+        b.createdAt.localeCompare(a.createdAt),
     );
 }
 
@@ -45,7 +45,7 @@ export function NoticePreview({ posts }: { posts: NoticePost[] }) {
       </div>
       {latest.length ? (
         <div className="notice-preview-list">
-          {latest.map(post => (
+          {latest.map((post) => (
             <Link
               className="notice-preview-row"
               key={post.id}
@@ -83,7 +83,7 @@ export function NoticeIndex({ c }: { c: SiteContent }) {
         </div>
         {list.length ? (
           <div className="notice-archive-list">
-            {list.map(post => (
+            {list.map((post) => (
               <Link
                 className="notice-archive-row"
                 key={post.id}
@@ -139,6 +139,14 @@ export function NoticeDetail({
       </section>
       <article className="notice-detail-copy">
         <div className="notice-content-text">{post.body}</div>
+        {post.image && (
+          <img
+            className="notice-attached-image"
+            src={post.image}
+            alt={`${post.title} 첨부 이미지`}
+            loading="lazy"
+          />
+        )}
         <Link className="underlined-link" href="/notices">
           <ArrowLeft size={15} /> 공지사항 목록으로
         </Link>

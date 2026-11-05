@@ -1,5 +1,5 @@
 import { getStore } from "@netlify/blobs";
-import { defaultContent, sanitizeContent } from "../../shared/content.js";
+import { defaultContent, publicNoticePost, sanitizeContent } from "../../shared/content.js";
 const routes: Record<string, { title: string; description: string }> = {
   "/": { title: "", description: "" },
   "/about": {
@@ -187,7 +187,7 @@ export default async (req: Request) => {
       )
       .join("")}${extra}<nav aria-label="사이트 메뉴">${navigation}</nav></main></div>`
   );
-  const publicContent = { ...c, noticePosts: published };
+  const publicContent = { ...c, noticePosts: published.map(publicNoticePost) };
   const seed = JSON.stringify(publicContent).replace(/</g, "\\u003c");
   html = html.replace(
     /<body([^>]*)>/,

@@ -17,7 +17,13 @@ export type NoticePost = {
   updatedAt: string;
   published: boolean;
   pinned: boolean;
+  image?: string;
 };
+export const maxNoticeImageLength = 410_000;
+export const maxNoticeImagesLength = 1_600_000;
+export function publicNoticePost(post: NoticePost): NoticePost {
+  return { ...post, image: post.image ? `/api/notice-image/${post.id}` : undefined };
+}
 export type SiteContent = {
   brand: string;
   heroTitle: string;
@@ -270,6 +276,11 @@ export function sanitizeContent(input: unknown): SiteContent {
             updatedAt: safeDate(x?.updatedAt),
             published: x?.published === true,
             pinned: x?.pinned === true,
+            image: typeof x?.image === "string" &&
+              x.image.length <= maxNoticeImageLength &&
+              /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(x.image)
+                ? x.image
+                : undefined,
           };
         })
       : defaultContent.noticePosts,

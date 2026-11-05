@@ -10,13 +10,14 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import type { NoticePost } from "@shared/content";
+import { maxNoticeImageLength, type NoticePost } from "@shared/content";
 
 type NoticeForm = {
   title: string;
   body: string;
   published: boolean;
   pinned: boolean;
+  image?: string;
 };
 const blank = (): NoticeForm => ({
   title: "",
@@ -40,11 +41,12 @@ export default function NoticeEditor({
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<NoticeForm>(blank);
+  const [loadingImage, setLoadingImage] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const ordered = useMemo(
     () => [...posts].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [posts]
+    [posts],
   );
 
   function startNew() {
@@ -60,12 +62,53 @@ export default function NoticeEditor({
       body: post.body,
       published: post.published,
       pinned: post.pinned,
+      image: post.image,
     });
     setError("");
     setMessage("");
   }
+  async function attachImage(file: File | undefined) {
+    if (!file) return;
+    if (
+      !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+      file.size > 10 * 1024 * 1024
+    ) {
+      setError("10MB 이하의 JPG, PNG 또는 WebP 파일을 선택하세요.");
+      return;
+    }
+    setLoadingImage(true);
+    setError("");
+    try {
+      const bitmap = await createImageBitmap(file);
+      let image: string;
+      try {
+        const scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Image conversion unavailable");
+        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        image = canvas.toDataURL("image/webp", 0.76);
+        if (image.length > maxNoticeImageLength)
+          image = canvas.toDataURL("image/webp", 0.5);
+      } finally {
+        bitmap.close();
+      }
+      if (image.length > maxNoticeImageLength) {
+        setError("변환한 이미지가 너무 큽니다. 더 작은 이미지를 선택하세요.");
+        return;
+      }
+      setForm((prev) => ({ ...prev, image }));
+    } catch {
+      setError("이미지를 읽을 수 없습니다. 다른 파일을 선택하세요.");
+    } finally {
+      setLoadingImage(false);
+    }
+  }
   function stagePost(event: React.FormEvent) {
     event.preventDefault();
+    if (loadingImage) return;
     const title = form.title.trim();
     const body = form.body.trim();
     if (!title || !body) {
@@ -76,7 +119,7 @@ export default function NoticeEditor({
       setError("공지사항은 최대 100개까지 저장할 수 있습니다.");
       return;
     }
-    const existing = posts.find(post => post.id === editingId);
+    const existing = posts.find((post) => post.id === editingId);
     const now = new Date().toISOString();
     const post: NoticePost = {
       id: existing?.id ?? crypto.randomUUID(),
@@ -86,40 +129,41 @@ export default function NoticeEditor({
       updatedAt: now,
       published: form.published,
       pinned: form.pinned,
+      image: form.image,
     };
-    onChange([post, ...posts.filter(item => item.id !== post.id)]);
+    onChange([post, ...posts.filter((item) => item.id !== post.id)]);
     startNew();
     setMessage(
-      "공지 목록에 반영했습니다. 아래 ‘변경 내용 저장’을 눌러 최종 저장해 주세요."
+      "공지 목록에 반영했습니다. 아래 ‘변경 내용 저장’을 눌러 최종 저장해 주세요.",
     );
   }
   function toggle(post: NoticePost, field: "published" | "pinned") {
     onChange(
-      posts.map(item =>
+      posts.map((item) =>
         item.id === post.id
           ? {
               ...item,
               [field]: !item[field],
               updatedAt: new Date().toISOString(),
             }
-          : item
-      )
+          : item,
+      ),
     );
     setMessage(
-      "공지 상태가 변경됐습니다. 아래 ‘변경 내용 저장’을 눌러 반영해 주세요."
+      "공지 상태가 변경됐습니다. 아래 ‘변경 내용 저장’을 눌러 반영해 주세요.",
     );
   }
   function remove(post: NoticePost) {
     if (
       !window.confirm(
-        `‘${post.title}’ 공지를 삭제할까요? 저장 후에는 되돌릴 수 없습니다.`
+        `‘${post.title}’ 공지를 삭제할까요? 저장 후에는 되돌릴 수 없습니다.`,
       )
     )
       return;
-    onChange(posts.filter(item => item.id !== post.id));
+    onChange(posts.filter((item) => item.id !== post.id));
     if (editingId === post.id) startNew();
     setMessage(
-      "삭제할 공지를 목록에서 제외했습니다. 아래 ‘변경 내용 저장’을 눌러 최종 반영해 주세요."
+      "삭제할 공지를 목록에서 제외했습니다. 아래 ‘변경 내용 저장’을 눌러 최종 반영해 주세요.",
     );
   }
 
@@ -133,8 +177,13 @@ export default function NoticeEditor({
           <h2>공지사항 관리</h2>
           <p>새 소식을 작성한 뒤 상태를 확인하고 페이지 하단에서 저장하세요.</p>
         </div>
-        <button type="button" className="notice-new-button" onClick={startNew}>
-          <FilePlus2 size={16} /> 새 공지 작성
+        <button
+          type="button"
+          className="notice-new-button"
+          onClick={startNew}
+          disabled={loadingImage}
+        >
+          <FilePlus2 size={16} /> 공지사항 작성하기
         </button>
       </div>
       <div className="notice-editor-grid">
@@ -148,6 +197,7 @@ export default function NoticeEditor({
                 type="button"
                 className="icon-button"
                 onClick={startNew}
+                disabled={loadingImage}
                 aria-label="수정 취소"
               >
                 <X size={16} />
@@ -160,8 +210,8 @@ export default function NoticeEditor({
               maxLength={100}
               required
               value={form.title}
-              onChange={e =>
-                setForm(prev => ({ ...prev, title: e.target.value }))
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, title: e.target.value }))
               }
               placeholder="공지 제목을 입력하세요"
             />
@@ -173,18 +223,51 @@ export default function NoticeEditor({
               required
               rows={11}
               value={form.body}
-              onChange={e =>
-                setForm(prev => ({ ...prev, body: e.target.value }))
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, body: e.target.value }))
               }
               placeholder="방문 고객에게 안내할 공지 내용을 적어 주세요."
             />
           </label>
+          <label>
+            <span className="field-label">이미지 첨부 (1장)</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={loadingImage}
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                e.currentTarget.value = "";
+                void attachImage(file);
+              }}
+            />
+          </label>
+          {loadingImage && <small role="status">이미지를 준비 중입니다.</small>}
+          {form.image && (
+            <div>
+              <img
+                className="notice-image-preview"
+                src={form.image}
+                alt="첨부 이미지 미리보기"
+              />
+              <button
+                type="button"
+                className="underlined-link"
+                disabled={loadingImage}
+                onClick={() =>
+                  setForm((prev) => ({ ...prev, image: undefined }))
+                }
+              >
+                이미지 제거
+              </button>
+            </div>
+          )}
           <label className="notice-check">
             <input
               type="checkbox"
               checked={form.published}
-              onChange={e =>
-                setForm(prev => ({ ...prev, published: e.target.checked }))
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, published: e.target.checked }))
               }
             />
             <span>
@@ -198,8 +281,8 @@ export default function NoticeEditor({
             <input
               type="checkbox"
               checked={form.pinned}
-              onChange={e =>
-                setForm(prev => ({ ...prev, pinned: e.target.checked }))
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, pinned: e.target.checked }))
               }
             />
             <span>
@@ -214,7 +297,11 @@ export default function NoticeEditor({
               {error}
             </p>
           )}
-          <button className="primary-button notice-stage-button" type="submit">
+          <button
+            className="primary-button notice-stage-button"
+            type="submit"
+            disabled={loadingImage}
+          >
             <Bell size={15} /> 목록에 반영
           </button>
           <small className="notice-save-hint">
@@ -228,7 +315,7 @@ export default function NoticeEditor({
             <span>{posts.length} / 100</span>
           </div>
           {ordered.length ? (
-            ordered.map(post => (
+            ordered.map((post) => (
               <article className="notice-admin-card" key={post.id}>
                 <div className="notice-admin-card-top">
                   <span
@@ -258,7 +345,11 @@ export default function NoticeEditor({
                 <h4>{post.title}</h4>
                 <p>{post.body}</p>
                 <div className="notice-card-actions">
-                  <button type="button" onClick={() => startEdit(post)}>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(post)}
+                    disabled={loadingImage}
+                  >
                     <Pencil size={13} /> 수정
                   </button>
                   <button
@@ -290,6 +381,7 @@ export default function NoticeEditor({
                     type="button"
                     className="notice-delete-button"
                     onClick={() => remove(post)}
+                    disabled={loadingImage}
                   >
                     <Trash2 size={13} /> 삭제
                   </button>

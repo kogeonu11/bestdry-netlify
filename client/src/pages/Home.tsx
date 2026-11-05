@@ -262,10 +262,12 @@ function Footer({ c }: { c: SiteContent }) {
           <span>대표 {c.representative}</span>
           <span>사업자등록번호 {c.businessNumber}</span>
           <Link href="/privacy">개인정보 처리방침</Link>
-          <Link className="footer-admin-link" href="/admin">
-            관리자 로그인
-          </Link>
         </div>
+      </div>
+      <div className="footer-admin">
+        <Link className="footer-admin-link" href="/admin">
+          관리자 로그인
+        </Link>
       </div>
     </footer>
   );
@@ -441,7 +443,7 @@ function HomePage({ c }: { c: SiteContent }) {
         <div className="services-top">
           <SectionIntro
             eyebrow="THOUGHTFUL GARMENT CARE"
-            title="옷감마다 다른,\n정성의 방법."
+            title={"옷감마다 다른,\n정성의 방법."}
             body="매일 입는 옷부터 특별한 날의 의류까지. 세탁물의 상태와 소재를 확인한 뒤 가능한 관리 방법을 안내해 드립니다."
           />
           <Link className="underlined-link all-services" href="/services">
