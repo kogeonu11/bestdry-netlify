@@ -152,7 +152,7 @@ export default async (req: Request) => {
   return json({ error: "Not found" }, 404);
 };
 export const config = {
-  path: "/api/*",
+  path: ["/api/site-content", "/api/admin/*"],
   preferStatic: false,
   rateLimit: {
     action: "rate_limit",
