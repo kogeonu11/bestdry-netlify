@@ -1038,42 +1038,6 @@ img {
   border-bottom: 1px solid #aebabc;
   padding-bottom: 7px;
 }
-.map-wrap {
-  height: 390px;
-  position: relative;
-  background: #e9efeb;
-  margin-top: 0;
-}
-.map-wrap > iframe {
-  border: 0;
-  width: 100%;
-  height: 100%;
-  filter: saturate(0.8);
-}
-.map-caption {
-  position: absolute;
-  bottom: 13px;
-  left: 14px;
-  right: 14px;
-  background: #fff;
-  padding: 12px 15px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 10px;
-  color: #465661;
-  box-shadow: 0 3px 15px rgba(30, 48, 50, 0.1);
-}
-.map-caption > svg {
-  color: #75a6ae;
-}
-.map-caption > a {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--navy);
-}
 .contact-page {
   display: grid;
   grid-template-columns: 0.82fr 1fr;
@@ -2021,16 +1985,6 @@ img {
   }
   .location-links {
     gap: 13px;
-  }
-  .map-wrap {
-    height: 315px;
-  }
-  .map-caption {
-    left: 9px;
-    right: 9px;
-    bottom: 9px;
-    padding: 11px;
-    font-size: 9px;
   }
   .contact-page {
     grid-template-columns: 1fr;

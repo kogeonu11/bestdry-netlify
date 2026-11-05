@@ -9,7 +9,6 @@ import {
   Clock3,
   Menu,
   MapPin,
-  MapPinned,
   Minus,
   Phone,
   Plus,
@@ -366,9 +365,9 @@ function VisitStrip({ c }: { c: SiteContent }) {
         </p>
       </div>
       <div className="visit-actions">
-        <Link href="/location" className="dark-button">
+        <a href={c.naverMapUrl} className="dark-button" target="_blank" rel="noreferrer">
           매장 위치 확인하기 <ArrowUpRight size={16} />
-        </Link>
+        </a>
         <PhoneLink c={c} className="text-phone">
           {c.phones[0]}
         </PhoneLink>
@@ -408,9 +407,9 @@ function HomePage({ c }: { c: SiteContent }) {
             <Link className="hero-button hero-button-light" href="/services">
               세탁 서비스 알아보기 <ArrowDownRight size={17} />
             </Link>
-            <Link className="hero-button hero-button-outline" href="/location">
+            <a className="hero-button hero-button-outline" href={c.naverMapUrl} target="_blank" rel="noreferrer">
               매장 위치 확인하기 <ArrowUpRight size={16} />
-            </Link>
+            </a>
           </div>
         </div>
         <a className="hero-scroll" href="#story">
@@ -613,8 +612,6 @@ function GuidePage({ c }: { c: SiteContent }) {
   );
 }
 function LocationPage({ c }: { c: SiteContent }) {
-  const [query, setQuery] = useState(encodeURIComponent(c.address));
-  useEffect(() => setQuery(encodeURIComponent(c.address)), [c.address]);
   const tel = c.phones[0]?.replace(/[^0-9+]/g, "");
   return (
     <>
@@ -639,7 +636,7 @@ function LocationPage({ c }: { c: SiteContent }) {
           </address>
           <div className="location-links">
             <a href={c.naverMapUrl} target="_blank" rel="noreferrer">
-              네이버 지도에서 보기 <ArrowUpRight size={15} />
+              네이버지도에서 위치 확인 <ArrowUpRight size={15} />
             </a>
             <a href={c.kakaoMapUrl} target="_blank" rel="noreferrer">
               카카오맵에서 보기 <ArrowUpRight size={15} />
@@ -693,21 +690,6 @@ function LocationPage({ c }: { c: SiteContent }) {
           </a>
         </div>
       </section>
-      <div className="map-wrap">
-        <iframe
-          title="세탁베스트드라이 주변 지도"
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          src={`https://maps.google.com/maps?q=${query}&output=embed&z=16`}
-        />
-        <div className="map-caption">
-          <MapPinned size={17} />
-          <span>{c.address}</span>
-          <a href={c.naverMapUrl} target="_blank" rel="noreferrer">
-            길찾기 <ArrowUpRight size={14} />
-          </a>
-        </div>
-      </div>
       <VisitStrip c={c} />
     </>
   );
