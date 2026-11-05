@@ -721,57 +721,6 @@ function ContactPage({ c }: { c: SiteContent }) {
             문의하기 <ArrowDownRight size={16} />
           </a>
         </div>
-        <div className="contact-options">
-          <a
-            href={`tel:${c.phones[0]?.replace(/[^0-9+]/g, "") || ""}`}
-            className="contact-option featured"
-          >
-            <div>
-              <span>CALL THE STORE · 대표 문의</span>
-              <h3>{c.phones[0]}</h3>
-              <p>전화 앱에서 매장 번호로 바로 연결됩니다.</p>
-            </div>
-            <Phone />
-            <ArrowUpRight className="option-arrow" />
-          </a>
-          {c.phones.slice(1).map(p => (
-            <a
-              href={`tel:${p.replace(/[^0-9+]/g, "")}`}
-              key={p}
-              className="contact-option"
-            >
-              <div>
-                <span>CONTACT</span>
-                <h3>{p}</h3>
-                <p>매장 전화 연결</p>
-              </div>
-              <Phone />
-              <ArrowUpRight className="option-arrow" />
-            </a>
-          ))}
-          <a
-            href={
-              c.kakaoUrl || `tel:${c.phones[0]?.replace(/[^0-9+]/g, "") || ""}`
-            }
-            target={c.kakaoUrl ? "_blank" : undefined}
-            rel={c.kakaoUrl ? "noreferrer" : undefined}
-            className="contact-option"
-          >
-            <div>
-              <span>
-                {c.kakaoUrl ? "KAKAO CHANNEL" : "KAKAO TALK · 채널 미설정"}
-              </span>
-              <h3>{c.kakaoUrl ? "카카오톡 상담" : "전화로 상담하기"}</h3>
-              <p>
-                {c.kakaoUrl
-                  ? "카카오톡 채널에서 상담을 시작합니다."
-                  : "등록된 공식 카카오톡 채널이 없어 전화로 안내해 드립니다."}
-              </p>
-            </div>
-            {c.kakaoUrl ? <ArrowUpRight /> : <Phone />}
-            <ArrowUpRight className="option-arrow" />
-          </a>
-        </div>
       </section>
       <CustomerInquiries />
       <section className="faq-section">
@@ -905,7 +854,7 @@ export default function Home() {
         {body}
         {!isAdmin && <Footer c={c} />}
       </div>
-      {!isAdmin && <FixedContact c={c} />}
+      {!isAdmin && path !== "/contact" && <FixedContact c={c} />}
     </>
   );
 }

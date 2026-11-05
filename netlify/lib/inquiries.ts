@@ -3,8 +3,10 @@ import { promisify } from "node:util";
 import { getStore } from "@netlify/blobs";
 
 const deriveKey = promisify(scrypt);
-const idPattern = /^\d{13}-[a-f0-9]{32}$/;
-const PAGE_SIZE = 20;
+// "b"로 시작하는 키는 공개 게시판 글, 그 외는 이전 비공개 문의입니다.
+const idPattern = /^b?\d{13}-[a-f0-9]{32}$/;
+const isBoardId = (id: string) => id.startsWith("b");
+const PAGE_SIZE = 15;
 
 type Inquiry = {
   id: string;
@@ -16,8 +18,6 @@ type Inquiry = {
   repliedAt?: string;
   salt: string;
   hash: string;
-  /** 공개 게시판 도입 이후 작성된 글만 true. 이전의 비공개 문의는 목록에 노출하지 않는다. */
-  public?: boolean;
 };
 
 export type InquiryAction =
@@ -51,49 +51,39 @@ export async function handleInquiry(
     const url = new URL(req.url);
 
     if (action === "list") {
-      const before = url.searchParams.get("before");
-      if (before && !idPattern.test(before))
-        return json({ error: "목록 요청이 올바르지 않습니다." }, 400);
+      const page = Math.max(1, Math.floor(Number(url.searchParams.get("page"))) || 1);
       const { blobs } = await store.list();
+      // 일반 방문자에게는 공개 게시판 글만, 관리자에게는 이전 비공개 문의까지 보여 준다.
       const keys = blobs
         .map((blob) => blob.key)
-        .filter((id) => idPattern.test(id) && (!before || id < before))
-        .sort()
-        .reverse();
-      // 일반 방문자에게는 공개 게시판 글만 보여 준다. 이전 비공개 문의는 관리자만 본다.
-      const items: {
-        id: string;
-        title: string;
-        author: string;
-        createdAt: string;
-        answered: boolean;
-        legacy?: boolean;
-      }[] = [];
-      let cursor = 0;
-      while (items.length < PAGE_SIZE && cursor < keys.length) {
-        const chunk = keys.slice(cursor, cursor + PAGE_SIZE);
-        cursor += chunk.length;
-        const rows = await Promise.all(
-          chunk.map(
+        .filter((id) => idPattern.test(id) && (isAdmin || isBoardId(id)))
+        .sort((x, y) => (x.replace(/^b/, "") < y.replace(/^b/, "") ? 1 : -1));
+      const total = keys.length;
+      const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      const start = (page - 1) * PAGE_SIZE;
+      const rows = await Promise.all(
+        keys
+          .slice(start, start + PAGE_SIZE)
+          .map(
             (id) => store.get(id, { type: "json" }) as Promise<Inquiry | null>,
           ),
-        );
-        for (const row of rows) {
-          if (!row || (!row.public && !isAdmin)) continue;
-          items.push({
-            id: row.id,
-            title: row.title,
-            author: row.author || "익명",
-            createdAt: row.createdAt,
-            answered: Boolean(row.reply),
-            ...(isAdmin && !row.public && { legacy: true }),
-          });
-          if (items.length === PAGE_SIZE) break;
-        }
-      }
-      const last = items.at(-1)?.id;
-      const hasMore = last ? keys.some((id) => id < last) : false;
-      return json({ items, next: hasMore ? last : null });
+      );
+      const items = rows.flatMap((row, index) =>
+        row
+          ? [
+              {
+                id: row.id,
+                no: total - start - index,
+                title: row.title,
+                author: row.author || "익명",
+                createdAt: row.createdAt,
+                answered: Boolean(row.reply),
+                ...(isAdmin && !isBoardId(row.id) && { legacy: true }),
+              },
+            ]
+          : [],
+      );
+      return json({ items, total, page, pages });
     }
 
     if (action === "detail") {
@@ -101,7 +91,7 @@ export async function handleInquiry(
       if (typeof id !== "string" || !idPattern.test(id))
         return json({ error: "게시글을 찾을 수 없습니다." }, 404);
       const inquiry = (await store.get(id, { type: "json" })) as Inquiry | null;
-      if (!inquiry || (!inquiry.public && !isAdmin))
+      if (!inquiry || (!isBoardId(id) && !isAdmin))
         return json({ error: "게시글을 찾을 수 없습니다." }, 404);
       return json(visible(inquiry));
     }
@@ -139,7 +129,7 @@ export async function handleInquiry(
       const author = field(input?.author, 20);
       if (!title || !body || !author)
         return json({ error: "작성자, 제목, 내용을 확인해 주세요." }, 400);
-      const id = `${Date.now()}-${randomBytes(16).toString("hex")}`;
+      const id = `b${Date.now()}-${randomBytes(16).toString("hex")}`;
       const salt = randomBytes(16).toString("hex");
       const hash = ((await deriveKey(password, salt, 32)) as Buffer).toString(
         "hex",
@@ -151,7 +141,6 @@ export async function handleInquiry(
         author,
         salt,
         hash,
-        public: true,
         createdAt: new Date().toISOString(),
       };
       const saved = await store.setJSON(id, inquiry, { onlyIfNew: true });

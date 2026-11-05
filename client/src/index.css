@@ -2372,3 +2372,35 @@ img {
 .inquiry-delete input { max-width: 180px; }
 .danger-link { color: #b3261e; }
 .hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* 표 형태 게시판 */
+.board-table { width: 100%; border-collapse: collapse; border-top: 2px solid #243B53; font-size: 15px; background: #fff; }
+.board-table th { padding: 10px 8px; font-weight: 600; font-size: 13px; background: #f4f6f8; border-bottom: 1px solid #d9dee2; color: #3b4852; }
+.board-table td { padding: 11px 8px; border-bottom: 1px solid #eceff1; text-align: center; color: #5f6b73; }
+.board-table tr.active td { background: #f4f9fc; }
+.board-table .col-no { width: 64px; }
+.board-table .col-author { width: 120px; }
+.board-table .col-date { width: 90px; }
+.board-table .col-del { width: 64px; }
+.board-table td.col-title { text-align: left; color: #252525; }
+.board-table td.col-title > button { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.board-table td.col-title > button:hover { text-decoration: underline; }
+.board-table .danger-link { background: none; border: 0; cursor: pointer; font: inherit; }
+.board-badge { margin-left: 6px; padding: 1px 6px; font-size: 11px; font-style: normal; color: #fff; background: #5a8fb0; border-radius: 3px; }
+.board-badge.muted { background: #8a949b; }
+.board-mobile-meta { display: none; }
+.board-empty { padding: 36px 0 !important; }
+.board-footer { display: flex; justify-content: center; align-items: center; position: relative; margin-top: 18px; min-height: 40px; }
+.board-write { position: absolute; right: 0; top: 0; }
+.board-pages { display: flex; gap: 4px; }
+.board-pages button { min-width: 30px; height: 30px; background: #fff; border: 1px solid #d9dee2; cursor: pointer; font: inherit; font-size: 13px; }
+.board-pages button.current { background: #243B53; color: #fff; border-color: #243B53; }
+.board-view { margin: 0 0 22px; }
+.board-reply { margin-top: 18px; padding: 14px 16px; background: #f4f9fc; border-left: 3px solid #A9D5E8; }
+@media (max-width: 640px) {
+  .board-table .col-author, .board-table .col-date, .board-table thead .col-author, .board-table thead .col-date { display: none; }
+  .board-table .col-no { width: 44px; }
+  .board-mobile-meta { display: block; margin-top: 3px; font-size: 12px; color: #7a858c; }
+  .board-footer { flex-direction: column; gap: 12px; }
+  .board-write { position: static; align-self: flex-end; }
+}

@@ -10,9 +10,16 @@ type Inquiry = {
   repliedAt?: string;
 };
 type InquiryRow = Pick<Inquiry, "id" | "title" | "createdAt"> & {
+  no: number;
   author: string;
   answered: boolean;
   legacy?: boolean;
+};
+type ListResult = {
+  items: InquiryRow[];
+  total: number;
+  page: number;
+  pages: number;
 };
 const adminPath = "/api/admin/inquiries";
 const publicPath = "/api/inquiries";
@@ -32,42 +39,167 @@ async function api<T>(path: string, method = "GET", body?: object): Promise<T> {
   return data as T;
 }
 
-const date = (value: string) => new Date(value).toLocaleDateString("ko-KR");
+const pad = (n: number) => String(n).padStart(2, "0");
+const today = new Date();
+function shortDate(value: string) {
+  const d = new Date(value);
+  const sameDay = d.toDateString() === today.toDateString();
+  return sameDay
+    ? `${pad(d.getHours())}:${pad(d.getMinutes())}`
+    : `${String(d.getFullYear()).slice(2)}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+}
+const fullDate = (value: string) => {
+  const d = new Date(value);
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
 
-export function CustomerInquiries() {
-  const [view, setView] = useState<"list" | "write">("list");
-  const [items, setItems] = useState<InquiryRow[]>([]);
-  const [next, setNext] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Inquiry>();
-  const [deletePassword, setDeletePassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [openedAt, setOpenedAt] = useState(Date.now());
+/** 번호 / 제목 / 글쓴이 / 날짜 게시판 표 */
+function BoardTable({
+  items,
+  busy,
+  onOpen,
+  onDelete,
+  activeId,
+}: {
+  items: InquiryRow[];
+  busy: boolean;
+  onOpen: (id: string) => void;
+  onDelete?: (id: string) => void;
+  activeId?: string;
+}) {
+  return (
+    <table className="board-table">
+      <thead>
+        <tr>
+          <th className="col-no">번호</th>
+          <th className="col-title">제목</th>
+          <th className="col-author">글쓴이</th>
+          <th className="col-date">날짜</th>
+          {onDelete && <th className="col-del">관리</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {items.length ? (
+          items.map(item => (
+            <tr key={item.id} className={item.id === activeId ? "active" : ""}>
+              <td className="col-no">{item.no}</td>
+              <td className="col-title">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onOpen(item.id)}
+                >
+                  {item.title}
+                </button>
+                {item.answered && <em className="board-badge">답변</em>}
+                {item.legacy && <em className="board-badge muted">비공개</em>}
+                <span className="board-mobile-meta">
+                  {item.author} · {shortDate(item.createdAt)}
+                </span>
+              </td>
+              <td className="col-author">{item.author}</td>
+              <td className="col-date">{shortDate(item.createdAt)}</td>
+              {onDelete && (
+                <td className="col-del">
+                  <button
+                    type="button"
+                    className="danger-link"
+                    disabled={busy}
+                    onClick={() => onDelete(item.id)}
+                  >
+                    삭제
+                  </button>
+                </td>
+              )}
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan={onDelete ? 5 : 4} className="board-empty">
+              {busy ? "불러오는 중…" : "등록된 글이 없습니다."}
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  );
+}
 
-  async function load(before?: string) {
+function Pagination({
+  page,
+  pages,
+  onPage,
+}: {
+  page: number;
+  pages: number;
+  onPage: (page: number) => void;
+}) {
+  if (pages <= 1) return null;
+  const start = Math.floor((page - 1) / 10) * 10 + 1;
+  const end = Math.min(start + 9, pages);
+  const numbers = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  return (
+    <nav className="board-pages" aria-label="페이지">
+      {start > 1 && (
+        <button type="button" onClick={() => onPage(start - 1)}>
+          ‹
+        </button>
+      )}
+      {numbers.map(n => (
+        <button
+          key={n}
+          type="button"
+          className={n === page ? "current" : ""}
+          aria-current={n === page ? "page" : undefined}
+          onClick={() => onPage(n)}
+        >
+          {n}
+        </button>
+      ))}
+      {end < pages && (
+        <button type="button" onClick={() => onPage(end + 1)}>
+          ›
+        </button>
+      )}
+    </nav>
+  );
+}
+
+function useBoardList(path: string) {
+  const [list, setList] = useState<ListResult>({
+    items: [],
+    total: 0,
+    page: 1,
+    pages: 1,
+  });
+  const [busy, setBusy] = useState(true);
+  const [message, setMessage] = useState("");
+
+  async function load(page = list.page) {
     setBusy(true);
     try {
-      const result = await api<{ items: InquiryRow[]; next: string | null }>(
-        before
-          ? `${publicPath}?before=${encodeURIComponent(before)}`
-          : publicPath,
-      );
-      setItems(previous =>
-        before ? [...previous, ...result.items] : result.items,
-      );
-      setNext(result.next);
+      setList(await api<ListResult>(`${path}?page=${page}`));
     } catch (error) {
       setMessage(errorText(error));
     } finally {
       setBusy(false);
     }
   }
-
   useEffect(() => {
-    void load();
+    void load(1);
   }, []);
+  return { list, load, busy, setBusy, message, setMessage };
+}
+
+export function CustomerInquiries() {
+  const [view, setView] = useState<"list" | "write">("list");
+  const [selected, setSelected] = useState<Inquiry>();
+  const [deletePassword, setDeletePassword] = useState("");
+  const [openedAt, setOpenedAt] = useState(Date.now());
+  const { list, load, busy, setBusy, message, setMessage } =
+    useBoardList(publicPath);
 
   async function open(id: string) {
     setBusy(true);
@@ -91,17 +223,16 @@ export function CustomerInquiries() {
     setBusy(true);
     setMessage("");
     try {
-      await api<{ id: string }>(publicPath, "POST", {
+      await api(publicPath, "POST", {
         ...values,
         elapsed: Date.now() - openedAt,
       });
       form.reset();
       setView("list");
+      await load(1);
       setMessage("글이 등록되었습니다.");
-      await load();
     } catch (error) {
       setMessage(errorText(error));
-    } finally {
       setBusy(false);
     }
   }
@@ -118,12 +249,11 @@ export function CustomerInquiries() {
         id: selected.id,
         password: deletePassword,
       });
-      setItems(previous => previous.filter(row => row.id !== selected.id));
       setSelected(undefined);
+      await load(list.page);
       setMessage("글을 삭제했습니다.");
     } catch (error) {
       setMessage(errorText(error));
-    } finally {
       setBusy(false);
     }
   }
@@ -134,26 +264,22 @@ export function CustomerInquiries() {
       className="inner-body inquiry-section"
       aria-labelledby="inquiry-title"
     >
-      <h2 id="inquiry-title">문의 게시판</h2>
+      <h2 id="inquiry-title">문의 사항</h2>
       <p className="inquiry-guide">
-        누구나 글을 읽고 남길 수 있는 공개 게시판입니다. 연락처·주소 등
-        개인정보는 적지 말아 주세요. 부적절한 글은 관리자가 삭제할 수 있습니다.
+        부적절한 글은 매장 확인 후 삭제될 수 있습니다. 연락처·주소 등
+        개인정보는 적지 말아 주세요.
       </p>
 
       {view === "write" ? (
-        <form
-          className="notice-compose"
-          onSubmit={submit}
-          
-        >
+        <form className="notice-compose" onSubmit={submit}>
           <label>
-            작성자 (닉네임) <input name="author" required maxLength={20} />
+            글쓴이 (닉네임) <input name="author" required maxLength={20} />
           </label>
           <label>
             제목 <input name="title" required maxLength={100} />
           </label>
           <label>
-            내용 <textarea name="body" required maxLength={4000} rows={6} />
+            내용 <textarea name="body" required maxLength={4000} rows={8} />
           </label>
           <label>
             글 비밀번호 (4자 이상, 내 글을 삭제할 때 필요)
@@ -186,58 +312,76 @@ export function CustomerInquiries() {
                 setMessage("");
               }}
             >
-              목록으로
+              취소
             </button>
           </div>
         </form>
-      ) : selected ? (
-        <article className="inquiry-record">
-          <h3>{selected.title}</h3>
-          <p className="inquiry-meta">
-            {selected.author || "익명"} · {date(selected.createdAt)}
-          </p>
-          <p className="inquiry-body">{selected.body}</p>
-          {selected.reply && (
-            <>
-              <strong>
-                관리자 답변
-                {selected.repliedAt ? ` · ${date(selected.repliedAt)}` : ""}
-              </strong>
-              <p className="inquiry-body">{selected.reply}</p>
-            </>
-          )}
-          <form className="inquiry-delete" onSubmit={removeOwn}>
-            <label>
-              글 비밀번호
-              <input
-                type="password"
-                value={deletePassword}
-                onChange={event => setDeletePassword(event.target.value)}
-                maxLength={128}
-                autoComplete="off"
-              />
-            </label>
-            <button className="underlined-link" disabled={busy || !deletePassword}>
-              내 글 삭제
-            </button>
-          </form>
-          <button
-            type="button"
-            className="underlined-link"
-            onClick={() => {
-              setSelected(undefined);
-              setMessage("");
-            }}
-          >
-            목록으로
-          </button>
-        </article>
       ) : (
         <>
-          <div className="inquiry-actions">
+          {selected && (
+            <article className="inquiry-record board-view">
+              <h3>{selected.title}</h3>
+              <p className="inquiry-meta">
+                글쓴이 {selected.author || "익명"} ·{" "}
+                {fullDate(selected.createdAt)}
+              </p>
+              <p className="inquiry-body">{selected.body}</p>
+              {selected.reply && (
+                <div className="board-reply">
+                  <strong>
+                    관리자 답변
+                    {selected.repliedAt
+                      ? ` · ${fullDate(selected.repliedAt)}`
+                      : ""}
+                  </strong>
+                  <p className="inquiry-body">{selected.reply}</p>
+                </div>
+              )}
+              <form className="inquiry-delete" onSubmit={removeOwn}>
+                <label>
+                  글 비밀번호
+                  <input
+                    type="password"
+                    value={deletePassword}
+                    onChange={event => setDeletePassword(event.target.value)}
+                    maxLength={128}
+                    autoComplete="off"
+                  />
+                </label>
+                <button
+                  className="underlined-link"
+                  disabled={busy || !deletePassword}
+                >
+                  내 글 삭제
+                </button>
+              </form>
+              <button
+                type="button"
+                className="underlined-link"
+                onClick={() => {
+                  setSelected(undefined);
+                  setMessage("");
+                }}
+              >
+                닫기
+              </button>
+            </article>
+          )}
+          <BoardTable
+            items={list.items}
+            busy={busy}
+            activeId={selected?.id}
+            onOpen={id => void open(id)}
+          />
+          <div className="board-footer">
+            <Pagination
+              page={list.page}
+              pages={list.pages}
+              onPage={page => void load(page)}
+            />
             <button
               type="button"
-              className="primary-button"
+              className="primary-button board-write"
               onClick={() => {
                 setView("write");
                 setOpenedAt(Date.now());
@@ -247,38 +391,6 @@ export function CustomerInquiries() {
               글쓰기
             </button>
           </div>
-          {items.length ? (
-            <ul className="inquiry-list">
-              {items.map(item => (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    className="underlined-link"
-                    disabled={busy}
-                    onClick={() => void open(item.id)}
-                  >
-                    {item.title}
-                  </button>
-                  <span className="inquiry-meta">
-                    {item.author} · {date(item.createdAt)}
-                    {item.answered ? " · 답변 완료" : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            !busy && <p>아직 등록된 글이 없습니다.</p>
-          )}
-          {next && (
-            <button
-              type="button"
-              className="underlined-link"
-              disabled={busy}
-              onClick={() => void load(next)}
-            >
-              이전 글 더 보기
-            </button>
-          )}
         </>
       )}
       {message && <p role="status">{message}</p>}
@@ -287,36 +399,10 @@ export function CustomerInquiries() {
 }
 
 export function AdminInquiries() {
-  const [items, setItems] = useState<InquiryRow[]>([]);
-  const [next, setNext] = useState<string | null>(null);
   const [selected, setSelected] = useState<Inquiry>();
   const [reply, setReply] = useState("");
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function load(before?: string) {
-    setBusy(true);
-    setMessage("");
-    try {
-      const result = await api<{ items: InquiryRow[]; next: string | null }>(
-        before
-          ? `${adminPath}?before=${encodeURIComponent(before)}`
-          : adminPath,
-      );
-      setItems((previous) =>
-        before ? [...previous, ...result.items] : result.items,
-      );
-      setNext(result.next);
-    } catch (error) {
-      setMessage(errorText(error));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  useEffect(() => {
-    void load();
-  }, []);
+  const { list, load, busy, setBusy, message, setMessage } =
+    useBoardList(adminPath);
 
   async function open(id: string) {
     setBusy(true);
@@ -340,109 +426,66 @@ export function AdminInquiries() {
     setBusy(true);
     setMessage("");
     try {
-      const inquiry = await api<Inquiry>(adminPath, "PUT", {
-        id: selected.id,
-        reply,
-      });
-      setSelected(inquiry);
-      setItems((previous) =>
-        previous.map((row) =>
-          row.id === inquiry.id ? { ...row, answered: true } : row,
-        ),
+      setSelected(
+        await api<Inquiry>(adminPath, "PUT", { id: selected.id, reply }),
       );
-      setMessage(
-        "답변을 저장했습니다. 고객이 답변 확인 화면에서 볼 수 있습니다.",
-      );
+      await load(list.page);
+      setMessage("답변을 저장했습니다. 게시글 아래에 공개로 표시됩니다.");
     } catch (error) {
       setMessage(errorText(error));
-    } finally {
       setBusy(false);
     }
   }
 
   async function remove(id: string) {
-    if (
-      !window.confirm(
-        "이 글을 삭제할까요? 삭제한 글은 되돌릴 수 없습니다.",
-      )
-    )
+    if (!window.confirm("이 글을 삭제할까요? 삭제한 글은 되돌릴 수 없습니다."))
       return;
     setBusy(true);
     setMessage("");
     try {
       await api(`${adminPath}?id=${encodeURIComponent(id)}`, "DELETE");
-      setItems(previous => previous.filter(row => row.id !== id));
       if (selected?.id === id) setSelected(undefined);
+      await load(list.page);
       setMessage("글을 삭제했습니다.");
     } catch (error) {
       setMessage(errorText(error));
-    } finally {
       setBusy(false);
     }
   }
 
   return (
     <section className="inquiry-section" aria-labelledby="admin-inquiry-title">
-      <h2 id="admin-inquiry-title">문의 게시판 관리</h2>
-      <button
-        type="button"
-        className="underlined-link"
-        disabled={busy}
-        onClick={() => void load()}
-      >
-        목록 새로고침
-      </button>
-      {items.length ? (
-        <ul className="inquiry-list">
-          {items.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                className="underlined-link"
-                disabled={busy}
-                onClick={() => void open(item.id)}
-              >
-                {item.title} · {item.author} · {date(item.createdAt)} ·{" "}
-                {item.answered ? "답변 완료" : "답변 대기"}
-                {item.legacy ? " · 이전 비공개 문의" : ""}
-              </button>
-              <button
-                type="button"
-                className="underlined-link danger-link"
-                disabled={busy}
-                onClick={() => void remove(item.id)}
-              >
-                삭제
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        !busy && !message && <p>접수된 문의가 없습니다.</p>
-      )}
-      {next && (
-        <button
-          type="button"
-          className="underlined-link"
-          disabled={busy}
-          onClick={() => void load(next)}
-        >
-          이전 문의 더 보기
-        </button>
-      )}
+      <h2 id="admin-inquiry-title">문의 사항 관리</h2>
+      <BoardTable
+        items={list.items}
+        busy={busy}
+        activeId={selected?.id}
+        onOpen={id => void open(id)}
+        onDelete={id => void remove(id)}
+      />
+      <div className="board-footer">
+        <Pagination
+          page={list.page}
+          pages={list.pages}
+          onPage={page => void load(page)}
+        />
+      </div>
       {selected && (
-        <article className="inquiry-record">
+        <article className="inquiry-record board-view">
           <h3>{selected.title}</h3>
+          <p className="inquiry-meta">
+            글쓴이 {selected.author || "익명"} · {fullDate(selected.createdAt)}
+          </p>
           <p className="inquiry-body">{selected.body}</p>
           <form className="notice-compose" onSubmit={save}>
             <label>
-              답변 내용{" "}
+              관리자 답변{" "}
               <textarea
                 rows={5}
                 maxLength={4000}
                 required
                 value={reply}
-                onChange={(event) => setReply(event.target.value)}
+                onChange={event => setReply(event.target.value)}
               />
             </label>
             <div className="inquiry-actions">
