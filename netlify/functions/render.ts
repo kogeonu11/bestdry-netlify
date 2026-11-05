@@ -1,5 +1,7 @@
 import { getStore } from "@netlify/blobs";
 import { defaultContent, publicNoticePost, sanitizeContent } from "../../shared/content.js";
+// SITE_ID is available in deployed Functions. NETLIFY also supports local Netlify tooling.
+const useNetlifyBlobs = Boolean(process.env.SITE_ID || process.env.NETLIFY);
 const routes: Record<string, { title: string; description: string }> = {
   "/": { title: "", description: "" },
   "/about": {
@@ -42,7 +44,7 @@ const routes: Record<string, { title: string; description: string }> = {
 };
 async function load() {
   try {
-    if (!process.env.NETLIFY) {
+    if (!useNetlifyBlobs) {
       const fs = await import("node:fs/promises");
       return sanitizeContent(
         JSON.parse(await fs.readFile(".local-content/site.json", "utf8"))

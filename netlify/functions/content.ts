@@ -12,6 +12,8 @@ import {
   publicNoticePost,
   sanitizeContent,
 } from "../../shared/content.js";
+// SITE_ID is available in deployed Functions. NETLIFY also supports local Netlify tooling.
+const useNetlifyBlobs = Boolean(process.env.SITE_ID || process.env.NETLIFY);
 const COOKIE = "bestdry_admin";
 const STORE = "bestdry-site-content";
 const key = process.env.ADMIN_PASSWORD?.trim() ?? "";
@@ -33,7 +35,7 @@ type Credential = {
   usedCodes: string[];
 };
 async function readCredential() {
-  if (!process.env.NETLIFY) return null;
+  if (!useNetlifyBlobs) return null;
   const entry = await authStore().getWithMetadata(credentialKey, {
     type: "json",
   });
@@ -79,7 +81,7 @@ function json(
   });
 }
 async function read() {
-  if (!process.env.NETLIFY) {
+  if (!useNetlifyBlobs) {
     try {
       const fs = await import("node:fs/promises");
       return sanitizeContent(
@@ -96,7 +98,7 @@ async function read() {
   );
 }
 async function sendRecoveryEmail() {
-  if (!process.env.NETLIFY || !adminEmail || !emailFrom || !emailKey)
+  if (!useNetlifyBlobs || !adminEmail || !emailFrom || !emailKey)
     return json({ error: "관리자 복구 이메일 설정이 필요합니다." }, 503);
   try {
     const store = authStore();
@@ -220,7 +222,7 @@ export default async (req: Request) => {
 
     if (isReset) {
       if (
-        !process.env.NETLIFY ||
+        !useNetlifyBlobs ||
         typeof body.code !== "string" ||
         body.code.length > 512
       )
@@ -350,7 +352,7 @@ export default async (req: Request) => {
         400,
       );
     try {
-      if (!process.env.NETLIFY) {
+      if (!useNetlifyBlobs) {
         const { writeFile, mkdir } = await import("node:fs/promises");
         await mkdir(".local-content", { recursive: true });
         await writeFile(
@@ -364,7 +366,11 @@ export default async (req: Request) => {
           data,
         );
       return json({ ok: true, content: data });
-    } catch {
+    } catch (error) {
+      console.error("Site content save failed", {
+        storage: useNetlifyBlobs ? "Netlify Blobs" : "local",
+        errorType: error instanceof Error ? error.name : "UnknownError",
+      });
       return json(
         { error: "저장 실패. 배포 상태 또는 Netlify Blobs를 확인해 주세요." },
         503,
