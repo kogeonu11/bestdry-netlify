@@ -2323,3 +2323,39 @@ img {
   .notice-admin-card { padding: 11px; }
   .notice-card-actions button { font-size: 8px; }
 }
+
+.inquiry-section {
+  scroll-margin-top: 100px;
+}
+.inquiry-section .notice-compose {
+  max-width: 680px;
+}
+.inquiry-section .notice-compose label,
+.inquiry-record label {
+  display: grid;
+  gap: 8px;
+}
+.inquiry-record {
+  max-width: 680px;
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px solid #dedfda;
+  background: #fff;
+  overflow-wrap: anywhere;
+}
+.inquiry-record p {
+  white-space: pre-wrap;
+}
+.inquiry-list {
+  display: grid;
+  gap: 10px;
+  padding: 12px 0;
+}
+.inquiry-record input {
+  border: 1px solid #dedfda;
+  padding: 8px;
+  min-width: 0;
+}
+.admin-save-bar[hidden] {
+  display: none;
+}

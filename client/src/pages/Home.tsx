@@ -1,3 +1,4 @@
+import { CustomerInquiries } from "@/components/Inquiries";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -716,6 +717,9 @@ function ContactPage({ c }: { c: SiteContent }) {
             <br />
             매장에서 의류를 확인한 후 안내해 드립니다.
           </p>
+          <a className="dark-button" href="#customer-inquiry">
+            문의하기 <ArrowDownRight size={16} />
+          </a>
         </div>
         <div className="contact-options">
           <a
@@ -769,6 +773,7 @@ function ContactPage({ c }: { c: SiteContent }) {
           </a>
         </div>
       </section>
+      <CustomerInquiries />
       <section className="faq-section">
         <Eyebrow>COMMON QUESTIONS</Eyebrow>
         <h2>자주 묻는 질문.</h2>
@@ -808,14 +813,14 @@ function PrivacyPage() {
         <p>
           세탁베스트드라이(이하 “사업자”)는 고객의 개인정보를 중요하게
           생각합니다. 본 홈페이지의 공지사항은 관리자가 작성하는 열람용
-          안내입니다. 방문자는 글·댓글·문의 양식이나 예약을 작성할 수 없으며,
-          홈페이지에서 이름·전화번호와 같은 고객 개인정보를 직접 수집하지
-          않습니다.
+          안내입니다. 온라인 문의에서는 제목과 내용, 문의 비밀번호를 처리합니다.
+          문의 내용은 응대에 사용하고, 비밀번호는 해시로 저장하여 문의와 답변을 조회할 때 확인합니다.
+          문의에는 응대에 필요하지 않은 개인정보를 적지 말아 주세요.
         </p>
         <h3>외부 서비스 연결</h3>
         <p>
           전화 문의 버튼을 선택하면 고객이 사용하는 기기의 전화 애플리케이션이
-          열립니다. 네이버 지도와 카카오맵, 구글 지도는 각 서비스가 제공하는
+          열립니다. 네이버 지도와 카카오맵은 각 서비스가 제공하는
           외부 사이트로 연결됩니다. 외부 서비스의 개인정보 처리는 해당 사업자의
           개인정보 처리방침을 따릅니다.
         </p>
@@ -828,9 +833,7 @@ function PrivacyPage() {
         <h3>문의 및 처리방침 안내</h3>
         <p>
           본 처리방침 내용과 관련하여 문의가 있으신 경우 사업장의 전화번호로
-          연락해 주세요. 추후 홈페이지에서 예약, 상담 폼 또는 개인정보를
-          입력하는 기능을 추가하는 경우 실제 수집 항목, 이용 목적, 보관 기간,
-          이용자의 동의 및 권리 행사 방법에 관한 이 처리방침을 먼저 갱신합니다.
+          연락해 주세요. 온라인 문의 내용에 대한 열람, 정정, 삭제 요청도 매장에 문의해 주세요.
         </p>
         <p className="policy-asof">
           본 처리방침은 홈페이지 개설일에 게시되었습니다.

@@ -12,6 +12,7 @@ import {
   publicNoticePost,
   sanitizeContent,
 } from "../../shared/content.js";
+import { handleInquiry } from "../lib/inquiries.js";
 // SITE_ID is available in deployed Functions. NETLIFY also supports local Netlify tooling.
 const useNetlifyBlobs = Boolean(process.env.SITE_ID || process.env.NETLIFY);
 const COOKIE = "bestdry_admin";
@@ -185,6 +186,15 @@ export default async (req: Request) => {
       return json({ error: "이미지를 불러올 수 없습니다." }, 503);
     }
   }
+  const origin = req.headers.get("origin");
+  if (origin && origin !== url.origin)
+    return json({ error: "요청 출처를 확인해 주세요." }, 403);
+  if (req.method === "POST") {
+    if (url.pathname === "/api/inquiries")
+      return handleInquiry(req, "create", json);
+    if (url.pathname === "/api/inquiries/lookup")
+      return handleInquiry(req, "lookup", json);
+  }
   if (!url.pathname.startsWith("/api/admin/"))
     return json({ error: "Not found" }, 404);
   if (!key)
@@ -192,9 +202,6 @@ export default async (req: Request) => {
       { error: "Netlify 환경변수 ADMIN_PASSWORD 설정이 필요합니다." },
       503,
     );
-  const origin = req.headers.get("origin");
-  if (origin && origin !== url.origin)
-    return json({ error: "요청 출처를 확인해 주세요." }, 403);
   if (url.pathname === "/api/admin/request-reset" && req.method === "POST")
     return sendRecoveryEmail();
   const cookie = req.headers
@@ -322,6 +329,14 @@ export default async (req: Request) => {
     });
   if (!verifyToken(cookie, sessionKey))
     return json({ error: "로그인이 필요합니다." }, 401);
+  if (url.pathname === "/api/admin/inquiries" && req.method === "GET")
+    return handleInquiry(
+      req,
+      url.searchParams.has("id") ? "detail" : "list",
+      json,
+    );
+  if (url.pathname === "/api/admin/inquiries" && req.method === "PUT")
+    return handleInquiry(req, "reply", json);
   if (url.pathname === "/api/admin/session" && req.method === "GET")
     return json({ ok: true });
   if (url.pathname === "/api/admin/content" && req.method === "GET")
@@ -380,7 +395,13 @@ export default async (req: Request) => {
   return json({ error: "Not found" }, 404);
 };
 export const config = {
-  path: ["/api/site-content", "/api/notice-image/:id", "/api/admin/*"],
+  path: [
+    "/api/site-content",
+    "/api/notice-image/:id",
+    "/api/inquiries",
+    "/api/inquiries/lookup",
+    "/api/admin/*",
+  ],
   preferStatic: false,
   rateLimit: {
     action: "rate_limit",

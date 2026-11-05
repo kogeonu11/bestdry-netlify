@@ -1,3 +1,4 @@
+import { AdminInquiries } from "@/components/Inquiries";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { defaultContent, type SiteContent } from "@shared/content";
@@ -370,10 +371,21 @@ export default function Admin() {
             >
               공지사항
             </button>
+            <button
+              onClick={() => setTab("고객 문의")}
+              className={tab === "고객 문의" ? "selected" : ""}
+            >
+              고객 문의
+            </button>
           </nav>
+          {tab === "고객 문의" && <AdminInquiries />}
           <div
             className="admin-fields"
-            style={{ display: tab === "공지사항" ? "none" : undefined }}
+            style={{
+              display: ["공지사항", "고객 문의"].includes(tab)
+                ? "none"
+                : undefined,
+            }}
           >
             {groups
               .find(([title]) => title === tab)?.[1]
@@ -441,7 +453,7 @@ export default function Admin() {
               }
             />
           )}
-          <div className="admin-save-bar">
+          <div className="admin-save-bar" hidden={tab === "고객 문의"}>
             <span aria-live="polite">{message}</span>
             <button
               className="primary-button"
