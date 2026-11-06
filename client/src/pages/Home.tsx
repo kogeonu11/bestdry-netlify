@@ -1,3 +1,4 @@
+import { AdSlot } from "@/components/AdSlot";
 import { CustomerInquiries } from "@/components/Inquiries";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -722,7 +723,9 @@ function ContactPage({ c }: { c: SiteContent }) {
           </a>
         </div>
       </section>
+      <AdSlot position="top" />
       <CustomerInquiries />
+      <AdSlot position="bottom" />
       <section className="faq-section">
         <Eyebrow>COMMON QUESTIONS</Eyebrow>
         <h2>자주 묻는 질문.</h2>
@@ -768,6 +771,7 @@ function PrivacyPage() {
         </p>
         <h3>외부 서비스 연결</h3>
         <p>
+          이 사이트는 구글 애드센스 광고를 게재할 수 있으며, 구글과 광고 파트너가 쿠키 등을 사용해 광고를 제공할 수 있습니다. 광고 개인 맞춤 설정은 구글 광고 설정에서 관리할 수 있습니다.
           전화 문의 버튼을 선택하면 고객이 사용하는 기기의 전화 애플리케이션이
           열립니다. 네이버 지도와 카카오맵은 각 서비스가 제공하는
           외부 사이트로 연결됩니다. 외부 서비스의 개인정보 처리는 해당 사업자의
@@ -776,8 +780,9 @@ function PrivacyPage() {
         <h3>쿠키 및 이용기록</h3>
         <p>
           홈페이지의 안정적인 제공과 페이지 표시를 위해 필수 기술 정보가 처리될
-          수 있습니다. 홈페이지 자체는 광고성 쿠키나 고객 프로필 추적을
-          의도적으로 설정하지 않습니다.
+          수 있습니다. 홈페이지 자체는 고객 프로필 추적을 의도적으로 설정하지
+          않습니다. 다만 광고가 게재되는 경우 구글과 광고 파트너가 광고 제공·측정을
+          위해 쿠키를 사용할 수 있습니다.
         </p>
         <h3>문의 및 처리방침 안내</h3>
         <p>

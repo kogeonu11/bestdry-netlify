@@ -2404,3 +2404,8 @@ img {
   .board-footer { flex-direction: column; gap: 12px; }
   .board-write { position: static; align-self: flex-end; }
 }
+
+/* 광고 자리 (구글 애드센스) */
+.ad-slot { max-width: 970px; margin: 28px auto; padding: 0 20px; min-height: 100px; text-align: center; }
+.ad-slot .ad-label { display: block; margin-bottom: 4px; font-size: 11px; color: #9aa4ab; }
+.ad-placeholder { display: flex; align-items: center; justify-content: center; border: 1px dashed #c3ccd2; color: #9aa4ab; font-size: 13px; min-height: 100px; }

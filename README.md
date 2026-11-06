@@ -77,3 +77,7 @@ pnpm dev
 ## 소스 구성
 
 `client/src/pages/Home.tsx`에는 방문자 페이지, `client/src/pages/Admin.tsx`에는 비밀번호 보호 편집 화면, `client/src/index.css`에는 PC·태블릿·모바일 디자인이 있습니다. `client/public/`은 최적화된 매장 이미지와 브랜드 로고·파비콘을 보유합니다. `shared/content.ts`는 매장 정보·서비스 목록·검증 여부·단계별 절차·자주 묻는 질문과 입력 검증을, `netlify/functions/content.ts`는 관리자 로그인·콘텐츠 영속 저장을, `netlify/functions/render.ts`는 경로별 검색 메타데이터·검색 로봇 콘텐츠·404 응답을 관리합니다. `netlify.toml`은 정적 사이트와 서버리스 함수 빌드 및 보안 헤더를 설정합니다.
+
+## 구글 애드센스 광고 (문의 사항 페이지 2곳)
+
+`/contact`의 문의 게시판 위(상단)와 아래(하단)에 광고 자리가 하나씩 있습니다. 애드센스 승인 후 Netlify 환경 변수에 `VITE_ADSENSE_CLIENT`(ca-pub-…), `VITE_ADSENSE_SLOT_TOP`, `VITE_ADSENSE_SLOT_BOTTOM`(광고 단위 ID)을 입력하고 다시 배포하면 표시됩니다. 값이 없으면 운영 사이트에는 아무것도 나오지 않습니다. 광고 승인을 위해 `client/public/ads.txt`에 `google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0` 한 줄을 추가하세요. 개인정보 처리방침에 광고 쿠키 안내 문구를 넣어 두었습니다.
